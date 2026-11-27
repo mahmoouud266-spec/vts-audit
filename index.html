@@ -1187,7 +1187,7 @@ function homeView(){
   if (!S.ready) return `<div class="empty">جاري تحميل الزيارات…</div>`;
   const intro = !S.canWrite ? `<div class="banner warn">${I.info}<span>عندك صلاحية عرض بس. عشان تصوّر وتوقّع، صاحب الصفحة لازم يديك صلاحية تعديل.</span></div>` : '';
   const list = S.isOwner ? S.visits : S.visits.filter(v => v.engineerId === S.meId);
-  if (!list.length) return `<div class="stack">${intro}<div class="empty">
+  if (!list.length) return `<div class="stack">${intro}${S.isOwner ? `<button class="btn ghost dashbtn" data-act="dash">${I.chart} <bdi dir="ltr">Dashboard</bdi></button>` : ''}<div class="empty">
       <b style="color:var(--fg)"><bdi dir="ltr">No visits yet</bdi></b><br>
       <bdi dir="ltr">Tap “New Visit” below to start your first audit. Everything is saved automatically.</bdi></div></div>`;
   return `<div class="stack">${intro}${S.isOwner ? `<button class="btn ghost dashbtn" data-act="dash">${I.chart} <bdi dir="ltr">Dashboard</bdi></button>` : ''}<div class="small muted"><bdi dir="ltr">${S.isOwner ? 'All Visits' : 'My Visits'} (${list.length})</bdi></div>` + list.map(v => {
