@@ -18,6 +18,13 @@
 #fb-login .fbl-msg{background:#FEF3C7;color:#7C4A03;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.6}
 #fb-login .fbl-links{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px}
 #fb-login .fbl-links a{color:#1C5FC4;cursor:pointer;text-decoration:underline}
+#fb-share{position:fixed;inset:0;z-index:99998;background:rgba(11,37,69,.55);display:flex;align-items:flex-end;justify-content:center;padding:16px;direction:rtl;font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif}
+#fb-share .fbs-card{width:100%;max-width:420px;background:#FBFCFE;border-radius:20px;padding:20px 18px 14px;display:flex;flex-direction:column;gap:10px;align-items:stretch;box-shadow:0 20px 50px rgba(0,0,0,.3);color:#13233F}
+#fb-share .fbs-ic{align-self:center;background:#C8102E;color:#fff;font:800 13px/1 sans-serif;letter-spacing:.08em;padding:12px 10px;border-radius:8px}
+#fb-share .fbs-n{text-align:center;font-size:13px;font-weight:600;color:#4A5A73;word-break:break-word}
+#fb-share button{padding:14px;border:0;border-radius:12px;background:#0B2545;color:#fff;font:700 16px inherit;font-family:inherit;cursor:pointer}
+#fb-share button.fbs-2{background:#E6ECF5;color:#0B2545}
+#fb-share a{text-align:center;color:#64748B;font-size:14px;padding:6px;cursor:pointer}
 #fb-login .fbl-ft{text-align:center;font-size:10.5px;font-weight:700;letter-spacing:.18em;color:#94A3B8;margin-top:6px}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -140,10 +147,34 @@
       return out;
     }
   };
-  const downloads = {save: async ({filename, data}) => {
-    const u = URL.createObjectURL(data instanceof Blob ? data : new Blob([data]));
+  /* التنزيل: على الموبايل بيطلع اختيار "مشاركة" (يروح لواتساب كـ PDF حقيقي بصورته) أو "حفظ" */
+  const MIME = {pdf: 'application/pdf', html: 'text/html', csv: 'text/csv', json: 'application/json', png: 'image/png', jpg: 'image/jpeg'};
+  const dlAnchor = (blob, filename) => {
+    const u = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = u; a.download = filename; a.style.display = 'none';
     document.body.appendChild(a); a.click(); setTimeout(() => { a.remove(); URL.revokeObjectURL(u); }, 60000);
+  };
+  const downloads = {save: async ({filename, data}) => {
+    const ext = (String(filename).split('.').pop() || '').toLowerCase(), type = MIME[ext] || (data && data.type) || 'application/octet-stream';
+    const blob = new Blob([data], {type});
+    let file = null; try { file = new File([blob], filename, {type}); } catch (e) {}
+    const canShare = file && navigator.canShare && navigator.share && (() => { try { return navigator.canShare({files: [file]}); } catch (e) { return false; } })();
+    const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform));
+    if (!canShare || !mobile) return dlAnchor(blob, filename);
+    await new Promise(done => {
+      const el = document.createElement('div'); el.id = 'fb-share';
+      el.innerHTML = `<div class="fbs-card"><div class="fbs-ic">${esc(ext.toUpperCase() || 'FILE')}</div><div class="fbs-n" dir="auto">${esc(String(filename).replace(/\.[a-z0-9]+$/i, ''))}</div>
+        <button data-s="share">مشاركة (واتساب وغيره)</button><button data-s="save" class="fbs-2">حفظ على الموبايل</button><a data-s="x">إلغاء</a></div>`;
+      document.body.appendChild(el);
+      const close = () => { el.remove(); done(); };
+      el.addEventListener('click', async e => {
+        const s = e.target.closest('[data-s]'); if (!s && e.target !== el) return;
+        const k = s ? s.dataset.s : 'x';
+        if (k === 'share'){ try { await navigator.share({files: [file], title: filename}); } catch (err) { if (err && err.name !== 'AbortError') dlAnchor(blob, filename); } close(); }
+        else if (k === 'save'){ dlAnchor(blob, filename); close(); }
+        else close();
+      });
+    });
   }};
   window.claude = {use: async n => { await ready; return ({db, assets, user, downloads})[n] || null; }};
 
