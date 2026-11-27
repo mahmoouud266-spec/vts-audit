@@ -156,6 +156,10 @@
       <div class="two-f"><label class="f">Email<input class="t" id="fb-se" dir="ltr" placeholder="name@gmail.com" autocomplete="off"></label>
       <label class="f">الاسم<input class="t" id="fb-sn" placeholder="م. ..." autocomplete="off"></label></div>
       <button class="btn sm" style="align-self:flex-start" data-fbact="add">إضافة مهندس</button>
+      <details><summary class="small" style="cursor:pointer;color:var(--accent)">إضافة أكتر من مهندس مرة واحدة</summary>
+        <div class="stack" style="gap:8px;margin-top:8px"><span class="small muted">الصق الإيميلات، كل واحد في سطر. ولو عاوز الاسم: الإيميل وبعده فاصلة والاسم.</span>
+        <textarea class="t" id="fb-bulk" dir="ltr" rows="6" placeholder="ali@gmail.com, م. علي&#10;omar@gmail.com"></textarea>
+        <button class="btn sm" style="align-self:flex-start" data-fbact="bulk">إضافة الكل</button></div></details>
       <div class="stack" style="gap:6px">${L.map(s => `<div style="display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:8px 10px">
         <span style="flex:1"><b>${esc(s.name || '')}</b> <span class="small muted" dir="ltr">${esc(s.id)}</span>${s.role === 'admin' ? ' <span class="chip pass">Admin</span>' : ''}</span>
         ${s.role === 'admin' ? '' : `<button class="btn ghost sm" data-fbact="del" data-id="${esc(s.id)}">شيل</button>`}</div>`).join('') || '<span class="small muted">جاري التحميل…</span>'}</div></section>`;
@@ -175,6 +179,17 @@
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){ toast('اكتب إيميل صح'); return; }
       await fs.collection('staff').doc(em).set({role: 'engineer', name: nm || em, addedAt: new Date().toISOString()});
       toast('اتضاف ' + (nm || em)); loadStaff();
+    }
+    if (a === 'bulk'){
+      const lines = String(document.getElementById('fb-bulk').value || '').split(/[\n;]+/).map(l => l.trim()).filter(Boolean);
+      const have = new Set((window.__fbStaffList || []).map(x => x.id)); let n = 0, bad = [];
+      for (const l of lines){
+        const m = l.match(/[^\s,<>()]+@[^\s,<>()]+\.[^\s,<>()]+/); if (!m){ bad.push(l); continue; }
+        const em = m[0].toLowerCase(); if (have.has(em)) continue;
+        const nm = l.replace(m[0], '').replace(/^[\s,،:\-–<>()]+|[\s,،:\-–<>()]+$/g, '').trim();
+        await fs.collection('staff').doc(em).set({role: 'engineer', name: nm || em, addedAt: new Date().toISOString()}); have.add(em); n++;
+      }
+      toast(`اتضاف ${n} مهندس` + (bad.length ? ` · ${bad.length} سطر مفيهوش إيميل` : '')); loadStaff(); return;
     }
     if (a === 'del' && confirmDel(b.dataset.id)){ await fs.collection('staff').doc(b.dataset.id).delete(); toast('اتشال'); loadStaff(); }
   });
