@@ -2134,12 +2134,25 @@ document.addEventListener('error', e => {
 }, true);
 
 /* ───────── تقرير PDF ───────── */
+/* تحميل صور التقرير: 4 صور في نفس الوقت بس، ولو صورة فشلت تتعاد لحد 4 مرات عشان النت الضعيف */
+const IMGQ = {n: 0, w: []};
+const imgLock = () => new Promise(r => { if (IMGQ.n < 4){ IMGQ.n++; r(); } else IMGQ.w.push(r); });
+const imgFree = () => { const nx = IMGQ.w.shift(); if (nx) nx(); else IMGQ.n--; };
 async function toDataUrl(id, maxSide){
+  if (!id) return '';
+  await imgLock();
   try {
-    let b = await (await fetch(blobUrl(id))).blob();
-    if (maxSide) b = await compress(b, maxSide, .82);
-    return await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); });
-  } catch { return ''; }
+    for (let k = 0; k < 4; k++){
+      try {
+        const res = await fetchT(blobUrl(id), 40000);
+        if (!res.ok) throw new Error('http ' + res.status);
+        let b = await res.blob(); if (!b.size) throw new Error('empty');
+        if (maxSide) b = await compress(b, maxSide, .82);
+        return await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = no; fr.readAsDataURL(b); });
+      } catch(e){ if (k < 3) await new Promise(r => setTimeout(r, 900 * (k + 1))); }
+    }
+    return '';
+  } finally { imgFree(); }
 }
 const fetchT = (url, ms=6000) => { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms); return fetch(url, {signal:c.signal}).finally(() => clearTimeout(t)); };
 async function embedFonts(){

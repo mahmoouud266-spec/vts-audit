@@ -1,5 +1,5 @@
 /* VTS Audit: يخلي الأبليكيشن يفتح من غير نت. الصفحة بتتجدد من النت لما يكون موجود */
-const C = 'vts-audit-v3';
+const C = 'vts-audit-v4';
 const CORE = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png',
   'https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js',
